@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>英文單字大冒險 Vocab Hero</title>
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js & Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@400;600;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #F8FAFC;
+    }
+    .font-fun {
+      font-family: 'Fredoka One', 'Noto Sans TC', cursive;
+    }
+    .perspective-1000 {
+      perspective: 1000px;
+    }
+    .transform-style-3d {
+      transform-style: preserve-3d;
+    }
+    .backface-hidden {
+      backface-visibility: hidden;
+    }
+    .rotate-y-180 {
+      transform: rotateY(180deg);
+    }
+    .lobby-card {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .lobby-card:hover {
+      transform: translateY(-6px);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col justify-between">
+
+  <!-- 頂部導覽列 -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+      <!-- 標題與回大廳按鈕 -->
+      <div class="flex items-center space-x-3">
+        <button onclick="switchTab('lobby')" class="flex items-center space-x-2 text-left group">
+          <span class="text-3xl transition-transform group-hover:scale-110">🎒</span>
+          <div>
+            <h1 class="text-xl font-black text-indigo-600 font-fun tracking-wide flex items-center">
+              Vocab Hero 單字大冒險
+              <span class="ml-2 text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">大廳</span>
+            </h1>
+            <div class="flex items-center space-x-2 mt-0.5">
+              <span class="text-xs text-slate-400 font-semibold">當前題庫:</span>
+              <select id="bank-selector" onchange="changeVocabBank(this.value)" class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-2 py-0.5 outline-none cursor-pointer">
+                <option value="adv800">進階 800 字庫</option>
+                <option value="ceec4" selected>大考中心 4 級字</option>
+                <option value="ceec5">大考中心 5 級字</option>
+                <option value="ceec6">大考中心 6 級字</option>
+              </select>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <!-- 學生個人資訊 / 登入狀態 -->
+      <div class="flex items-center space-x-3">
+        <div id="user-info-bar" class="flex items-center space-x-3 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-2xl shadow-xs">
+          <div class="text-sm">
+            <span class="font-bold text-amber-800" id="display-user-name">訪客小勇士</span>
+            <span class="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full ml-1 font-black" id="display-level">Lv.1</span>
+          </div>
+          <div class="flex items-center text-amber-600 font-bold text-sm">
+            <i class="fa-solid fa-coins mr-1 text-yellow-500"></i>
+            <span id="display-coins">0</span>
+          </div>
+          <button onclick="handleLogout()" class="text-xs text-slate-400 hover:text-red-500 transition-colors ml-1 p-1" title="登出或切換帳號">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模式分頁選單 (含大廳按鈕) -->
+    <nav class="max-w-6xl mx-auto px-4 flex space-x-2 sm:space-x-3 overflow-x-auto text-sm font-bold border-t border-slate-100 py-2">
+      <button onclick="switchTab('lobby')" id="tab-lobby" class="tab-btn px-4 py-2 rounded-xl text-indigo-600 bg-indigo-50 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>🏰</span><span>冒險大廳</span>
+      </button>
+      <button onclick="switchTab('cards')" id="tab-cards" class="tab-btn px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>📇</span><span>單字翻牌</span>
+      </button>
+      <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>🎯</span><span>四選一測驗</span>
+      </button>
+      <button onclick="switchTab('spell')" id="tab-spell" class="tab-btn px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>🐝</span><span>拼字大考驗</span>
+      </button>
+      <button onclick="switchTab('mistakes')" id="tab-mistakes" class="tab-btn px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>📕</span><span>錯題筆記本</span>
+        <span id="mistake-badge" class="hidden text-xs bg-red-500 text-white px-1.5 py-0.2 rounded-full font-bold">0</span>
+      </button>
+      <button onclick="switchTab('stats')" id="tab-stats" class="tab-btn px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>📊</span><span>學習數據</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- 主要內容區 -->
+  <main class="max-w-4xl mx-auto px-4 py-6 w-full flex-1">
+
+    <!-- 0. 冒險大廳 (Hero Lobby) -->
+    <section id="sec-lobby" class="space-y-6">
+      <!-- 勇士狀態看板 -->
+      <div class="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white p-6 sm:p-8 rounded-3xl shadow-lg relative overflow-hidden">
+        <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div class="flex items-center space-x-3 mb-2">
+              <span class="text-4xl">👑</span>
+              <div>
+                <h2 class="text-2xl font-black font-fun tracking-wide" id="lobby-hero-name">小勇士的冒險大廳</h2>
+                <p class="text-indigo-200 text-xs">準備好展開今天的單字大挑戰了嗎？每一次練習題目順序都會全隨機產生！</p>
+              </div>
+            </div>
+          </div>
+          <!-- 等級與星幣小卡片 -->
+          <div class="flex items-center space-x-3 bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20">
+            <div class="text-center px-2">
+              <div class="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">勇者等級</div>
+              <div class="text-2xl font-black font-fun text-yellow-300" id="lobby-hero-level">Lv.1</div>
+            </div>
+            <div class="w-px h-8 bg-white/20"></div>
+            <div class="text-center px-2">
+              <div class="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">星幣資產</div>
+              <div class="text-2xl font-black font-fun text-amber-300 flex items-center justify-center">
+                <i class="fa-solid fa-coins mr-1 text-base text-yellow-400"></i>
+                <span id="lobby-hero-coins">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 升級經驗值進度條 -->
+        <div class="mt-5 relative z-10">
+          <div class="flex justify-between text-xs font-bold text-indigo-200 mb-1">
+            <span>升級經驗值 (XP)</span>
+            <span id="lobby-xp-text">0 / 100 XP</span>
+          </div>
+          <div class="w-full bg-white/20 rounded-full h-3.5 p-0.5 overflow-hidden">
+            <div id="lobby-xp-bar" class="bg-gradient-to-r from-yellow-400 to-amber-300 h-full rounded-full transition-all duration-500 shadow-sm" style="width: 10%"></div>
+          </div>
+        </div>
+
+        <!-- 背景裝飾氣泡 -->
+        <div class="absolute -right-8 -bottom-8 w-44 h-44 bg-white/5 rounded-full pointer-events-none"></div>
+        <div class="absolute right-36 -top-10 w-32 h-32 bg-white/5 rounded-full pointer-events-none"></div>
+      </div>
+
+      <!-- 四大模式傳送門卡片 -->
+      <div>
+        <h3 class="text-base font-black text-slate-700 mb-3 flex items-center">
+          <i class="fa-solid fa-compass text-indigo-500 mr-2"></i>選擇今天的訓練模式
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- 1. 單字翻牌 -->
+          <div onclick="switchTab('cards')" class="lobby-card bg-white p-5 rounded-3xl border-2 border-indigo-100 hover:border-indigo-400 shadow-sm hover:shadow-md cursor-pointer flex items-center space-x-4 group">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+              📇
+            </div>
+            <div class="flex-1">
+              <h4 class="font-black text-slate-800 text-base group-hover:text-indigo-600 transition-colors">單字翻牌記憶卡</h4>
+              <p class="text-xs text-slate-400 mt-0.5">3D 翻轉卡片、美音朗讀發音，每次進場自動隨機打亂！</p>
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-indigo-500 transition-colors"></i>
+          </div>
+
+          <!-- 2. 四選一測驗 -->
+          <div onclick="switchTab('quiz')" class="lobby-card bg-white p-5 rounded-3xl border-2 border-emerald-100 hover:border-emerald-400 shadow-sm hover:shadow-md cursor-pointer flex items-center space-x-4 group">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+              🎯
+            </div>
+            <div class="flex-1">
+              <h4 class="font-black text-slate-800 text-base group-hover:text-emerald-600 transition-colors">四選一快速挑戰</h4>
+              <p class="text-xs text-slate-400 mt-0.5">題目與 ABCD 選項隨機變換，考驗反應累積 Combo！</p>
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-emerald-500 transition-colors"></i>
+          </div>
+
+          <!-- 3. 拼字大考驗 -->
+          <div onclick="switchTab('spell')" class="lobby-card bg-white p-5 rounded-3xl border-2 border-amber-100 hover:border-amber-400 shadow-sm hover:shadow-md cursor-pointer flex items-center space-x-4 group">
+            <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+              🐝
+            </div>
+            <div class="flex-1">
+              <h4 class="font-black text-slate-800 text-base group-hover:text-amber-600 transition-colors">聽音拼字大考驗</h4>
+              <p class="text-xs text-slate-400 mt-0.5">聽發音拼出完整單字，可使用星幣購買提示字母！</p>
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-amber-500 transition-colors"></i>
+          </div>
+
+          <!-- 4. 錯題筆記本 -->
+          <div onclick="switchTab('mistakes')" class="lobby-card bg-white p-5 rounded-3xl border-2 border-rose-100 hover:border-rose-400 shadow-sm hover:shadow-md cursor-pointer flex items-center space-x-4 group">
+            <div class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+              📕
+            </div>
+            <div class="flex-1">
+              <h4 class="font-black text-slate-800 text-base group-hover:text-rose-600 transition-colors">錯題消滅筆記本</h4>
+              <p class="text-xs text-slate-400 mt-0.5">紀錄每次做錯的題目，完全學會後一鍵消除！</p>
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-rose-500 transition-colors"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- 大廳快速數據概況 -->
+      <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap justify-around items-center text-center gap-4">
+        <div>
+          <div class="text-xs font-bold text-slate-400">當前詞庫單字量</div>
+          <div class="text-xl font-black text-indigo-600 mt-0.5" id="lobby-bank-total">-- 字</div>
+        </div>
+        <div class="w-px h-8 bg-slate-100 hidden sm:block"></div>
+        <div>
+          <div class="text-xs font-bold text-slate-400">已完成挑戰次數</div>
+          <div class="text-xl font-black text-emerald-600 mt-0.5" id="lobby-history-count">0 次</div>
+        </div>
+        <div class="w-px h-8 bg-slate-100 hidden sm:block"></div>
+        <div>
+          <div class="text-xs font-bold text-slate-400">尚待複習生字</div>
+          <div class="text-xl font-black text-rose-500 mt-0.5" id="lobby-mistake-count">0 個</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1. 單字翻牌探索 (Cards) -->
+    <section id="sec-cards" class="hidden space-y-6">
+      <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-center relative overflow-hidden">
+        <div class="flex justify-between items-center mb-4 text-xs font-bold text-slate-400">
+          <span id="card-index-indicator">單字卡 1 / 10</span>
+          <button onclick="toggleSpeechRate()" id="btn-speech-rate" class="hover:text-indigo-600 bg-slate-100 px-2 py-1 rounded-md">
+            🔈 發音速度: 正常 (1.0x)
+          </button>
+        </div>
+
+        <!-- 3D 翻轉卡本體 -->
+        <div class="perspective-1000 w-full max-w-md mx-auto h-72 cursor-pointer" onclick="flipCard()">
+          <div id="card-inner" class="relative w-full h-full duration-500 transform-style-3d bg-indigo-50 border-2 border-indigo-200 rounded-3xl p-6 flex flex-col justify-center items-center shadow-md select-none transition-transform">
+            <!-- 正面 (英文) -->
+            <div id="card-front" class="absolute inset-0 backface-hidden flex flex-col justify-center items-center p-6">
+              <span class="text-xs bg-indigo-200 text-indigo-800 font-black px-3 py-1 rounded-full mb-3" id="card-pos">詞性</span>
+              <h2 class="text-4xl font-black text-indigo-700 tracking-wide mb-3 font-fun" id="card-word">Loading...</h2>
+              <p class="text-slate-400 text-xs mt-2"><i class="fa-solid fa-hand-pointer mr-1"></i>點擊翻面查看中文釋義</p>
+            </div>
+            <!-- 背面 (中文) -->
+            <div id="card-back" class="absolute inset-0 backface-hidden rotate-y-180 flex flex-col justify-center items-center p-6 bg-amber-50 border-2 border-amber-200 rounded-3xl">
+              <span class="text-xs bg-amber-200 text-amber-800 font-black px-3 py-1 rounded-full mb-2">中文翻譯</span>
+              <h3 class="text-2xl font-black text-slate-800 mb-4" id="card-meaning">載入中...</h3>
+              <p class="text-slate-400 text-xs"><i class="fa-solid fa-rotate-left mr-1"></i>點擊翻回英文</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 操作按鈕 -->
+        <div class="flex justify-center items-center space-x-4 mt-6">
+          <button onclick="speakCurrentWord()" class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 flex items-center justify-center text-lg transition-transform active:scale-95" title="朗讀發音">
+            <i class="fa-solid fa-volume-high"></i>
+          </button>
+          <button onclick="prevCard()" class="px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-600 text-sm">
+            上一張
+          </button>
+          <button onclick="nextCard()" class="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-bold text-white text-sm shadow-md shadow-indigo-100">
+            下一張
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 四選一測驗 (Quiz) -->
+    <section id="sec-quiz" class="hidden space-y-6">
+      <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200">
+        <!-- 頂部進度與連勝 -->
+        <div class="flex justify-between items-center mb-6">
+          <div class="text-xs font-bold text-slate-400">
+            題目: <span id="quiz-progress" class="text-indigo-600 font-black text-sm">1 / 10</span>
+          </div>
+          <div class="flex items-center space-x-1 text-orange-500 font-black text-sm">
+            <i class="fa-solid fa-fire"></i>
+            <span>連勝 Combo: <span id="quiz-combo">0</span></span>
+          </div>
+        </div>
+
+        <!-- 題目本體 -->
+        <div class="text-center py-6 border-b border-slate-100 mb-6">
+          <div class="text-xs font-bold text-slate-400 mb-1" id="quiz-type-hint">請選出正確的中文意思：</div>
+          <h2 class="text-3xl sm:text-4xl font-black text-slate-800 tracking-wide flex justify-center items-center space-x-3">
+            <span id="quiz-question-word">word</span>
+            <button onclick="speakQuizWord()" class="text-indigo-400 hover:text-indigo-600 text-xl">
+              <i class="fa-solid fa-volume-high"></i>
+            </button>
+          </h2>
+          <span id="quiz-question-pos" class="inline-block mt-2 text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-semibold">n.</span>
+        </div>
+
+        <!-- 選項按鈕 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="quiz-options-container">
+          <!-- 動態生成選項 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 拼字大考驗 (Spelling) -->
+    <section id="sec-spell" class="hidden space-y-6">
+      <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 text-center">
+        <div class="text-xs font-bold text-slate-400 mb-2">聽音拼字挑戰</div>
+        <div class="flex justify-center items-center space-x-3 mb-6">
+          <button onclick="speakSpellWord()" class="w-16 h-16 rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 flex items-center justify-center text-2xl shadow-sm transition-transform active:scale-95">
+            <i class="fa-solid fa-volume-high"></i>
+          </button>
+        </div>
+        <div class="text-lg font-bold text-slate-700 mb-2" id="spell-meaning">中文題意</div>
+        <div class="text-xs text-slate-400 mb-6" id="spell-pos-hint">長度: 6 個字母</div>
+
+        <!-- 填空輸入框 -->
+        <div class="flex justify-center items-center space-x-2 mb-6">
+          <input type="text" id="spell-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                 class="w-full max-w-xs text-center text-2xl font-black tracking-widest uppercase border-2 border-slate-300 rounded-2xl py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                 placeholder="輸入單字..." onkeydown="if(event.key==='Enter') verifySpelling()">
+        </div>
+
+        <div class="flex justify-center space-x-3">
+          <button onclick="revealHintLetter()" class="px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs">
+            💡 提示字母 (-5 星幣)
+          </button>
+          <button onclick="verifySpelling()" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-100">
+            送出答案
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 錯題筆記本 (Mistakes) -->
+    <section id="sec-mistakes" class="hidden space-y-6">
+      <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h2 class="text-lg font-black text-slate-800">錯題消滅筆記本</h2>
+            <p class="text-xs text-slate-400">在測驗或拼字中做錯的題目會自動保存在這裡，完全熟悉後可點擊消除！</p>
+          </div>
+          <button onclick="clearAllMistakes()" class="text-xs text-slate-400 hover:text-red-500 font-bold">
+            一鍵清空
+          </button>
+        </div>
+
+        <div id="mistakes-list" class="divide-y divide-slate-100">
+          <!-- 動態載入錯題 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 學習紀錄與數據中心 (Stats) -->
+    <section id="sec-stats" class="hidden space-y-6">
+      <!-- 統計圖表與概覽 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-black text-slate-700 mb-3 flex items-center">
+            <i class="fa-solid fa-chart-line text-indigo-500 mr-2"></i>歷史答對率走勢
+          </h3>
+          <div class="h-48">
+            <canvas id="accuracyChart"></canvas>
+          </div>
+        </div>
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-black text-slate-700 mb-3 flex items-center">
+            <i class="fa-solid fa-trophy text-amber-500 mr-2"></i>冒險家榮譽勳章
+          </h3>
+          <div class="grid grid-cols-2 gap-2 text-xs" id="badge-container">
+            <!-- 勳章列表 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 歷次測驗紀錄列表 -->
+      <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <h3 class="text-base font-black text-slate-800 mb-4 flex items-center">
+          <i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i>歷次挑戰記錄
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-600">
+            <thead class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-100">
+              <tr>
+                <th class="py-2.5 px-3">時間</th>
+                <th class="py-2.5 px-3">挑戰模式</th>
+                <th class="py-2.5 px-3">詞庫</th>
+                <th class="py-2.5 px-3">正確率</th>
+                <th class="py-2.5 px-3">得分</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body" class="divide-y divide-slate-100">
+              <!-- 動態紀錄 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 底部版權 -->
+  <footer class="py-4 text-center text-xs text-slate-400">
+    Vocab Hero © 孩子自主單字學習系統 ｜ 每次測驗皆全新隨機出題
+  </footer>
+
+  <!-- 登入 / 註冊對話框 (彈窗) -->
+  <div id="auth-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white max-w-sm w-full p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-100 text-center relative">
+      <div class="text-4xl mb-3">🛡️</div>
+      <h3 class="text-xl font-black text-slate-800 mb-1" id="auth-modal-title">歡迎登入單字大冒險</h3>
+      <p class="text-xs text-slate-400 mb-6">建立自己的探險者帳號，永久保存每一次的挑戰進度與錯題！</p>
+
+      <div class="space-y-3 text-left">
+        <div>
+          <label class="text-xs font-bold text-slate-500 ml-1">帳號名稱 (Username)</label>
+          <input type="text" id="auth-username" placeholder="例如：Leo、Emma" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-sm mt-1">
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-500 ml-1">通關密碼</label>
+          <input type="password" id="auth-password" placeholder="請輸入密碼" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-sm mt-1">
+        </div>
+      </div>
+
+      <div id="auth-error-msg" class="text-xs text-red-500 font-bold mt-3 min-h-[1rem]"></div>
+
+      <div class="space-y-2 mt-4">
+        <button onclick="handleAuthSubmit('login')" class="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-100 transition-all">
+          登入帳號
+        </button>
+        <button onclick="handleAuthSubmit('register')" class="w-full py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition-all">
+          第一次來？建立新帳號
+        </button>
+        <button onclick="handleGuestLogin()" class="w-full py-2 rounded-2xl text-slate-400 hover:text-slate-600 font-semibold text-xs">
+          訪客試玩體驗
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. 4 大字庫詞彙清單
+       ========================================================================= */
+    const VOCAB_DATA = {
+      adv800: [
+        {w:'add', p:'v.', m:'增加'}, {w:'pan', p:'n.', m:'平底鍋'}, {w:'mat', p:'n.', m:'草蓆'},
+        {w:'mass', p:'adj.', m:'大量的;大規模的'}, {w:'lack', p:'n.', m:'欠缺;不足'}, {w:'lamp', p:'n.', m:'燈'},
+        {w:'land', p:'v.', m:'登陸;降落'}, {w:'lane', p:'n.', m:'小巷;跑道'}, {w:'leader', p:'n.', m:'領袖;領導者'},
+        {w:'lemon', p:'n.', m:'檸檬'}, {w:'level', p:'n.', m:'高度;水平'}, {w:'limit', p:'v.', m:'限制'},
+        {w:'line', p:'n.', m:'線;行列'}, {w:'lion', p:'n.', m:'獅子'}, {w:'list', p:'n.', m:'名冊;清單'},
+        {w:'load', p:'v.', m:'裝載;裝貨'}, {w:'local', p:'adj.', m:'地方的;當地的'}, {w:'lock', p:'v.', m:'鎖上'},
+        {w:'loud', p:'adj.', m:'大聲的;響亮的'}, {w:'lover', p:'n.', m:'愛人;戀人'}, {w:'lucky', p:'adj.', m:'幸運的'},
+        {w:'magic', p:'adj.', m:'有魔力的;神奇的'}, {w:'mail', p:'n.', m:'郵件;郵件信件'}, {w:'main', p:'adj.', m:'主要的'}
+      ],
+      ceec4: [
+        {w:'authentic', p:'adj.', m:'真實的；可信的'}, {w:'impose', p:'v.', m:'強加；徵稅'}, {w:'potential', p:'adj.', m:'潛在的；可能的'},
+        {w:'paragraph', p:'n.', m:'(文章的)段，節'}, {w:'rainfall', p:'n.', m:'降雨量'}, {w:'alert', p:'v.', m:'警告；提醒'},
+        {w:'dew', p:'n.', m:'露水'}, {w:'mule', p:'n.', m:'騾子；固執的人'}, {w:'tremble', p:'v.', m:'顫抖；搖晃'},
+        {w:'logic', p:'n.', m:'邏輯；邏輯學'}, {w:'curious', p:'adj.', m:'好奇的'}, {w:'defend', p:'v.', m:'保衛；防守'},
+        {w:'delight', p:'n.', m:'愉快；高興'}, {w:'emerge', p:'v.', m:'浮現；顯現'}, {w:'escape', p:'v.', m:'逃跑；逃脫'},
+        {w:'factor', p:'n.', m:'因素；要素'}, {w:'flavor', p:'n.', m:'風味；氣味'}, {w:'frequent', p:'adj.', m:'頻繁的；經常的'},
+        {w:'glance', p:'v.', m:'瞥一眼；掃視'}, {w:'hollow', p:'adj.', m:'空的；中空的'}, {w:'humble', p:'adj.', m:'謙虛的；卑微的'}
+      ],
+      ceec5: [
+        {w:'abnormal', p:'adj.', m:'異常的；反常的'}, {w:'abolish', p:'v.', m:'廢除；廢止'}, {w:'abrupt', p:'adj.', m:'突然的；唐突的'},
+        {w:'absurd', p:'adj.', m:'荒謬的；可笑的'}, {w:'abundance', p:'n.', m:'豐富；充足'}, {w:'accelerate', p:'v.', m:'加速；促進'},
+        {w:'accessible', p:'adj.', m:'易接近的；可使用的'}, {w:'accommodate', p:'v.', m:'容納；提供住宿'},
+        {w:'accumulate', p:'v.', m:'積累；積聚'}, {w:'addict', p:'n.', m:'成癮者；對…著迷的人'},
+        {w:'adventurous', p:'adj.', m:'大膽的；冒險的'}, {w:'aesthetic', p:'adj.', m:'美學的；有審美觀的'}
+      ],
+      ceec6: [
+        {w:'inventory', p:'n.', m:'存貨清單；庫存'}, {w:'jolly', p:'adj.', m:'快活的；令人高興的'}, {w:'kinship', p:'n.', m:'親屬關係；親密關係'},
+        {w:'lament', p:'v.', m:'哀悼；痛惜'}, {w:'lethal', p:'adj.', m:'致命的；毀滅性的'}, {w:'magnify', p:'v.', m:'放大；擴大'},
+        {w:'navigable', p:'adj.', m:'可航行的'}, {w:'obscurity', p:'n.', m:'默默無聞；晦澀'},
+        {w:'paramount', p:'adj.', m:'至高無上的；最重要的'}, {w:'quarantine', p:'n.', m:'檢疫；隔離'},
+        {w:'redundant', p:'adj.', m:'多餘的；累贅的'}, {w:'sagacious', p:'adj.', m:'聰敏的；睿智的'}
+      ]
+    };
+
+    /* =========================================================================
+       2. 工具函式：Fisher-Yates 真正隨機洗牌演算法
+       ========================================================================= */
+    function shuffleArray(origArray) {
+      const arr = [...origArray];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    /* =========================================================================
+       3. 本地使用者狀態與儲存管理 (免 API Key，永不失效)
+       ========================================================================= */
+    let currentUser = null;
+    let currentBankKey = 'ceec4';
+    let speechRate = 1.0;
+
+    function getCurrentVocab() {
+      return VOCAB_DATA[currentBankKey] || VOCAB_DATA['ceec4'];
+    }
+
+    function initUserAccount(username) {
+      const storageKey = 'vocab_user_' + username;
+      let data = localStorage.getItem(storageKey);
+      if (!data) {
+        data = {
+          username: username,
+          coins: 0,
+          exp: 0,
+          level: 1,
+          history: [],
+          mistakes: []
+        };
+        localStorage.setItem(storageKey, JSON.stringify(data));
+      } else {
+        data = JSON.parse(data);
+      }
+      return data;
+    }
+
+    function saveUserData() {
+      if (!currentUser || currentUser.isGuest) return;
+      localStorage.setItem('vocab_user_' + currentUser.username, JSON.stringify(currentUser));
+      localStorage.setItem('vocab_current_active_user', currentUser.username);
+    }
+
+    function updateHeaderProfile() {
+      const nameEl = document.getElementById('display-user-name');
+      const levelEl = document.getElementById('display-level');
+      const coinsEl = document.getElementById('display-coins');
+
+      const heroNameEl = document.getElementById('lobby-hero-name');
+      const heroLevelEl = document.getElementById('lobby-hero-level');
+      const heroCoinsEl = document.getElementById('lobby-hero-coins');
+      const heroXpText = document.getElementById('lobby-xp-text');
+      const heroXpBar = document.getElementById('lobby-xp-bar');
+      const lobbyHistoryCount = document.getElementById('lobby-history-count');
+      const lobbyMistakeCount = document.getElementById('lobby-mistake-count');
+      const lobbyBankTotal = document.getElementById('lobby-bank-total');
+
+      const username = (!currentUser || currentUser.isGuest) ? '訪客小勇士' : currentUser.username;
+      const level = (!currentUser || currentUser.isGuest) ? 1 : (currentUser.level || 1);
+      const coins = (!currentUser || currentUser.isGuest) ? 0 : (currentUser.coins || 0);
+      const exp = (!currentUser || currentUser.isGuest) ? 0 : (currentUser.exp || 0);
+      const expInCurrentLevel = exp % 100;
+
+      nameEl.textContent = username;
+      levelEl.textContent = 'Lv.' + level;
+      coinsEl.textContent = coins;
+
+      if (heroNameEl) heroNameEl.textContent = `${username} 的冒險大廳`;
+      if (heroLevelEl) heroLevelEl.textContent = 'Lv.' + level;
+      if (heroCoinsEl) heroCoinsEl.textContent = coins;
+      if (heroXpText) heroXpText.textContent = `${expInCurrentLevel} / 100 XP`;
+      if (heroXpBar) heroXpBar.style.width = `${Math.max(5, expInCurrentLevel)}%`;
+
+      if (lobbyHistoryCount) lobbyHistoryCount.textContent = `${currentUser && currentUser.history ? currentUser.history.length : 0} 次`;
+      if (lobbyMistakeCount) lobbyMistakeCount.textContent = `${currentUser && currentUser.mistakes ? currentUser.mistakes.length : 0} 個`;
+      if (lobbyBankTotal) lobbyBankTotal.textContent = `${getCurrentVocab().length} 字`;
+
+      updateMistakeBadge();
+    }
+
+    /* =========================================================================
+       4. 帳號登入 / 註冊 / 訪客機制
+       ========================================================================= */
+    function handleAuthSubmit(mode) {
+      const usernameInput = document.getElementById('auth-username').value.trim();
+      const passwordInput = document.getElementById('auth-password').value.trim();
+      const errEl = document.getElementById('auth-error-msg');
+
+      if (!usernameInput || !passwordInput) {
+        errEl.textContent = '請輸入帳號與密碼！';
+        return;
+      }
+
+      const passKey = 'vocab_pass_' + usernameInput;
+      const storedPass = localStorage.getItem(passKey);
+
+      if (mode === 'register') {
+        if (storedPass) {
+          errEl.textContent = '此帳號已被註冊，請直接點擊登入！';
+          return;
+        }
+        localStorage.setItem(passKey, passwordInput);
+        currentUser = initUserAccount(usernameInput);
+        saveUserData();
+        closeAuthModal();
+      } else {
+        if (!storedPass) {
+          errEl.textContent = '找不到此帳號，請先點擊「建立新帳號」！';
+          return;
+        }
+        if (storedPass !== passwordInput) {
+          errEl.textContent = '密碼不正確，請重新檢查！';
+          return;
+        }
+        currentUser = initUserAccount(usernameInput);
+        saveUserData();
+        closeAuthModal();
+      }
+    }
+
+    function handleGuestLogin() {
+      currentUser = {
+        username: '訪客小勇士',
+        isGuest: true,
+        coins: 0,
+        exp: 0,
+        level: 1,
+        history: [],
+        mistakes: []
+      };
+      closeAuthModal();
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('vocab_current_active_user');
+      currentUser = null;
+      document.getElementById('auth-modal').classList.remove('hidden');
+      document.getElementById('auth-error-msg').textContent = '';
+      updateHeaderProfile();
+    }
+
+    function closeAuthModal() {
+      document.getElementById('auth-modal').classList.add('hidden');
+      updateHeaderProfile();
+      renderStats();
+      switchTab('lobby');
+    }
+
+    /* =========================================================================
+       5. 語音朗讀 (Web Speech API)
+       ========================================================================= */
+    function speakText(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = speechRate;
+      window.speechSynthesis.speak(u);
+    }
+
+    function toggleSpeechRate() {
+      speechRate = speechRate === 1.0 ? 0.7 : 1.0;
+      document.getElementById('btn-speech-rate').textContent = `🔈 發音速度: ${speechRate === 1.0 ? '正常 (1.0x)' : '慢速 (0.7x)'}`;
+    }
+
+    /* =========================================================================
+       6. 翻牌模式 (Cards) - 每次打亂順序
+       ========================================================================= */
+    let currentCardIdx = 0;
+    let isFlipped = false;
+    let shuffledCardList = [];
+
+    function initCards() {
+      // 進入時全新洗牌，確保順序隨機
+      shuffledCardList = shuffleArray(getCurrentVocab());
+      currentCardIdx = 0;
+      renderCard();
+    }
+
+    function renderCard() {
+      if (!shuffledCardList || shuffledCardList.length === 0) return;
+      const item = shuffledCardList[currentCardIdx];
+      document.getElementById('card-word').textContent = item.w;
+      document.getElementById('card-pos').textContent = item.p || '單字';
+      document.getElementById('card-meaning').textContent = item.m;
+      document.getElementById('card-index-indicator').textContent = `單字卡 ${currentCardIdx + 1} / ${shuffledCardList.length}`;
+
+      isFlipped = false;
+      document.getElementById('card-inner').classList.remove('rotate-y-180');
+    }
+
+    function flipCard() {
+      isFlipped = !isFlipped;
+      document.getElementById('card-inner').classList.toggle('rotate-y-180', isFlipped);
+    }
+
+    function prevCard() {
+      if (shuffledCardList.length === 0) return;
+      currentCardIdx = (currentCardIdx - 1 + shuffledCardList.length) % shuffledCardList.length;
+      renderCard();
+    }
+
+    function nextCard() {
+      if (shuffledCardList.length === 0) return;
+      currentCardIdx = (currentCardIdx + 1) % shuffledCardList.length;
+      renderCard();
+    }
+
+    function speakCurrentWord() {
+      if (shuffledCardList[currentCardIdx]) speakText(shuffledCardList[currentCardIdx].w);
+    }
+
+    /* =========================================================================
+       7. 四選一測驗 (Quiz) - 每次挑戰題目與選項皆全新隨機洗牌
+       ========================================================================= */
+    let quizQuestionNum = 1;
+    let quizCombo = 0;
+    let quizScore = 0;
+    let quizQuestionsList = [];
+    let currentQuizWord = null;
+
+    function initQuiz() {
+      quizQuestionNum = 1;
+      quizCombo = 0;
+      quizScore = 0;
+      
+      // 隨機抽選 10 題並打亂題序
+      const allWords = shuffleArray(getCurrentVocab());
+      quizQuestionsList = allWords.slice(0, Math.min(10, allWords.length));
+      
+      nextQuizQuestion();
+    }
+
+    function nextQuizQuestion() {
+      if (quizQuestionNum > quizQuestionsList.length) {
+        finishQuizSession();
+        return;
+      }
+      document.getElementById('quiz-progress').textContent = `${quizQuestionNum} / ${quizQuestionsList.length}`;
+      document.getElementById('quiz-combo').textContent = quizCombo;
+
+      // 取得當前題目
+      currentQuizWord = quizQuestionsList[quizQuestionNum - 1];
+
+      document.getElementById('quiz-question-word').textContent = currentQuizWord.w;
+      document.getElementById('quiz-question-pos').textContent = currentQuizWord.p || '';
+
+      // 產生 4 個不重複選項，並徹底打亂選項順序 (A/B/C/D 隨機擺放)
+      const allBank = getCurrentVocab();
+      const distractors = shuffleArray(allBank.filter(x => x.w !== currentQuizWord.w)).slice(0, 3);
+      const options = shuffleArray([currentQuizWord, ...distractors]);
+
+      const container = document.getElementById('quiz-options-container');
+      container.innerHTML = '';
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left p-4 rounded-2xl border-2 border-slate-100 hover:border-indigo-300 hover:bg-indigo-50 font-bold text-slate-700 transition-all active:scale-98';
+        btn.innerHTML = `<span class="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded mr-2 font-mono">${opt.p || '-'}</span> ${opt.m}`;
+        btn.onclick = () => selectQuizAnswer(opt, btn);
+        container.appendChild(btn);
+      });
+    }
+
+    function speakQuizWord() {
+      if (currentQuizWord) speakText(currentQuizWord.w);
+    }
+
+    function selectQuizAnswer(chosen, btnEl) {
+      const isCorrect = chosen.w === currentQuizWord.w;
+      if (isCorrect) {
+        btnEl.classList.remove('border-slate-100', 'hover:border-indigo-300', 'hover:bg-indigo-50');
+        btnEl.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600');
+        quizCombo++;
+        quizScore += 10;
+        rewardExpAndCoins(10, 2);
+      } else {
+        btnEl.classList.add('bg-rose-500', 'text-white', 'border-rose-600');
+        quizCombo = 0;
+        addMistake(currentQuizWord);
+      }
+
+      setTimeout(() => {
+        quizQuestionNum++;
+        nextQuizQuestion();
+      }, 700);
+    }
+
+    function finishQuizSession() {
+      const totalPossible = quizQuestionsList.length * 10;
+      const accuracy = totalPossible > 0 ? Math.round((quizScore / totalPossible) * 100) : 0;
+      recordHistory('四選一測驗', accuracy, quizScore);
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+      
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50';
+      modal.innerHTML = `
+        <div class="bg-white p-6 rounded-3xl max-w-xs w-full text-center shadow-2xl">
+          <div class="text-5xl mb-2">🎉</div>
+          <h4 class="text-lg font-black text-slate-800">測驗完成！</h4>
+          <p class="text-sm text-slate-500 my-2">本次得分: <b class="text-indigo-600">${quizScore}</b> 分<br>正確率: <b class="text-emerald-500">${accuracy}%</b></p>
+          <div class="space-y-2 mt-4">
+            <button onclick="this.closest('.fixed').remove(); initQuiz();" class="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm">
+              再玩一次全新題目
+            </button>
+            <button onclick="this.closest('.fixed').remove(); switchTab('lobby');" class="w-full py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm">
+              返回冒險大廳
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    /* =========================================================================
+       8. 拼字大挑戰 (Spelling) - 每次隨機選題
+       ========================================================================= */
+    let currentSpellWord = null;
+
+    function initSpell() {
+      const vocab = getCurrentVocab();
+      // 隨機選題
+      currentSpellWord = vocab[Math.floor(Math.random() * vocab.length)];
+      document.getElementById('spell-meaning').textContent = currentSpellWord.m;
+      document.getElementById('spell-pos-hint').textContent = `詞性: ${currentSpellWord.p || '-'} ｜ 字數長度: ${currentSpellWord.w.length} 個字母`;
+      document.getElementById('spell-input').value = '';
+      speakSpellWord();
+    }
+
+    function speakSpellWord() {
+      if (currentSpellWord) speakText(currentSpellWord.w);
+    }
+
+    function revealHintLetter() {
+      if (currentUser && currentUser.coins >= 5) {
+        currentUser.coins -= 5;
+        saveUserData();
+        updateHeaderProfile();
+        const input = document.getElementById('spell-input');
+        input.value = currentSpellWord.w.substring(0, Math.min(input.value.length + 1, currentSpellWord.w.length));
+      } else {
+        alert('星幣不足 5 枚，無法購買提示喔！');
+      }
+    }
+
+    function verifySpelling() {
+      const userVal = document.getElementById('spell-input').value.trim().toLowerCase();
+      if (!userVal) return;
+
+      if (userVal === currentSpellWord.w.toLowerCase()) {
+        confetti({ particleCount: 50, spread: 60 });
+        rewardExpAndCoins(20, 5);
+        recordHistory('拼字挑戰', 100, 20);
+        setTimeout(() => {
+          initSpell();
+        }, 1000);
+      } else {
+        addMistake(currentSpellWord);
+        const input = document.getElementById('spell-input');
+        input.classList.add('border-red-500', 'bg-red-50');
+        setTimeout(() => {
+          input.classList.remove('border-red-500', 'bg-red-50');
+        }, 800);
+      }
+    }
+
+    /* =========================================================================
+       9. 獎勵、錯題與紀錄保存
+       ========================================================================= */
+    function rewardExpAndCoins(expGain, coinGain) {
+      if (!currentUser) return;
+      currentUser.exp = (currentUser.exp || 0) + expGain;
+      currentUser.coins = (currentUser.coins || 0) + coinGain;
+      currentUser.level = Math.floor(currentUser.exp / 100) + 1;
+      saveUserData();
+      updateHeaderProfile();
+    }
+
+    function addMistake(wordObj) {
+      if (!currentUser) return;
+      if (!currentUser.mistakes) currentUser.mistakes = [];
+      if (!currentUser.mistakes.find(m => m.w === wordObj.w)) {
+        currentUser.mistakes.push(wordObj);
+        saveUserData();
+        updateMistakeBadge();
+      }
+    }
+
+    function updateMistakeBadge() {
+      const badge = document.getElementById('mistake-badge');
+      const count = currentUser && currentUser.mistakes ? currentUser.mistakes.length : 0;
+      if (count > 0) {
+        badge.classList.remove('hidden');
+        badge.textContent = count;
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function renderMistakes() {
+      const listEl = document.getElementById('mistakes-list');
+      listEl.innerHTML = '';
+      if (!currentUser || !currentUser.mistakes || currentUser.mistakes.length === 0) {
+        listEl.innerHTML = '<div class="py-12 text-center text-slate-400 font-bold">目前沒有任何錯題，太優秀了！🌟</div>';
+        return;
+      }
+      currentUser.mistakes.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = 'py-3 flex justify-between items-center';
+        row.innerHTML = `
+          <div>
+            <div class="font-black text-slate-800 text-base">${item.w} <span class="text-xs text-slate-400 font-normal ml-1">${item.p || ''}</span></div>
+            <div class="text-xs text-slate-500">${item.m}</div>
+          </div>
+          <div class="flex space-x-2">
+            <button onclick="speakText('${item.w}')" class="p-2 text-indigo-500 hover:text-indigo-700"><i class="fa-solid fa-volume-high"></i></button>
+            <button onclick="removeMistake(${index})" class="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg text-xs font-bold">我學會了</button>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+    }
+
+    function removeMistake(index) {
+      currentUser.mistakes.splice(index, 1);
+      saveUserData();
+      renderMistakes();
+      updateMistakeBadge();
+      updateHeaderProfile();
+    }
+
+    function clearAllMistakes() {
+      currentUser.mistakes = [];
+      saveUserData();
+      renderMistakes();
+      updateMistakeBadge();
+      updateHeaderProfile();
+    }
+
+    function recordHistory(mode, accuracy, score) {
+      if (!currentUser) return;
+      if (!currentUser.history) currentUser.history = [];
+      currentUser.history.unshift({
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        mode: mode,
+        bank: currentBankKey,
+        accuracy: accuracy,
+        score: score
+      });
+      if (currentUser.history.length > 20) currentUser.history.pop();
+      saveUserData();
+      updateHeaderProfile();
+    }
+
+    /* =========================================================================
+       10. 數據圖表與切換分頁
+       ========================================================================= */
+    let chartInstance = null;
+    function renderStats() {
+      const tbody = document.getElementById('history-table-body');
+      tbody.innerHTML = '';
+      const history = (currentUser && currentUser.history) ? currentUser.history : [];
+
+      if (history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-400">尚無挑戰紀錄，快開始練習吧！</td></tr>';
+      } else {
+        history.forEach(h => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="py-2.5 px-3 font-mono">${h.time}</td>
+            <td class="py-2.5 px-3 font-bold">${h.mode}</td>
+            <td class="py-2.5 px-3 uppercase text-slate-400">${h.bank}</td>
+            <td class="py-2.5 px-3 font-bold ${h.accuracy >= 80 ? 'text-emerald-500' : 'text-amber-500'}">${h.accuracy}%</td>
+            <td class="py-2.5 px-3 font-bold">${h.score}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // 繪製圖表
+      const ctx = document.getElementById('accuracyChart').getContext('2d');
+      const chartData = history.slice(0, 7).reverse();
+      const labels = chartData.map(d => d.time);
+      const values = chartData.map(d => d.accuracy);
+
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels.length ? labels : ['無數據'],
+          datasets: [{
+            label: '正確率 (%)',
+            data: values.length ? values : [0],
+            borderColor: '#6366F1',
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { min: 0, max: 100 } }
+        }
+      });
+    }
+
+    function switchTab(tabId) {
+      ['lobby', 'cards', 'quiz', 'spell', 'mistakes', 'stats'].forEach(t => {
+        const sec = document.getElementById(`sec-${t}`);
+        const tab = document.getElementById(`tab-${t}`);
+        if (sec) sec.classList.add('hidden');
+        if (tab) {
+          tab.classList.remove('bg-indigo-50', 'text-indigo-600');
+          tab.classList.add('text-slate-600');
+        }
+      });
+
+      const currentSec = document.getElementById(`sec-${tabId}`);
+      const currentTab = document.getElementById(`tab-${tabId}`);
+      if (currentSec) currentSec.classList.remove('hidden');
+      if (currentTab) {
+        currentTab.classList.add('bg-indigo-50', 'text-indigo-600');
+        currentTab.classList.remove('text-slate-600');
+      }
+
+      if (tabId === 'lobby') updateHeaderProfile();
+      if (tabId === 'cards') initCards();
+      if (tabId === 'quiz') initQuiz();
+      if (tabId === 'spell') initSpell();
+      if (tabId === 'mistakes') renderMistakes();
+      if (tabId === 'stats') renderStats();
+    }
+
+    function changeVocabBank(bank) {
+      currentBankKey = bank;
+      updateHeaderProfile();
+      initCards();
+      initQuiz();
+      initSpell();
+    }
+
+    // 初始化自動檢查登入
+    window.onload = () => {
+      const activeUser = localStorage.getItem('vocab_current_active_user');
+      if (activeUser) {
+        currentUser = initUserAccount(activeUser);
+        closeAuthModal();
+      } else {
+        document.getElementById('auth-modal').classList.remove('hidden');
+      }
+    };
+  </script>
+</body>
+</html>
